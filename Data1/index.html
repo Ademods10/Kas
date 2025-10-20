@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Daftar Kas Mingguan</title>
+<style>
+  body {
+    font-family: Arial, sans-serif;
+    background: #f4f4f9;
+    margin: 20px;
+  }
+  h2 {
+    text-align: center;
+  }
+  #bulanSekarang {
+    text-align: center;
+    font-weight: bold;
+    margin-bottom: 15px;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    background: white;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+  }
+  th, td {
+    border: 1px solid #ddd;
+    padding: 8px;
+    text-align: center;
+  }
+  th {
+    background-color: #007bff;
+    color: white;
+  }
+  tr:nth-child(even) {
+    background-color: #f9f9f9;
+  }
+  .total {
+    font-weight: bold;
+    text-align: right;
+    padding: 10px;
+  }
+  .controls {
+    margin: 15px 0;
+    text-align: center;
+  }
+  input[type="text"] {
+    padding: 6px;
+    font-size: 14px;
+  }
+  button {
+    padding: 6px 10px;
+    background-color: #007bff;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+  button:hover {
+    background-color: #0056b3;
+  }
+  .delete-btn {
+    background-color: #dc3545;
+  }
+  .delete-btn:hover {
+    background-color: #b52a35;
+  }
+</style>
+</head>
+<body>
+
+<h2>Daftar Kas Mingguan (Rp10.000 / Minggu)</h2>
+<div id="bulanSekarang"></div>
+
+<div class="controls">
+  <input type="text" id="namaBaru" placeholder="Tambah nama baru...">
+  <button onclick="tambahNama()">Tambah</button>
+  <button onclick="downloadData()">Download Data</button>
+</div>
+
+<table id="kasTable">
+  <thead>
+    <tr>
+      <th>Nama</th>
+      <th>Minggu 1</th>
+      <th>Minggu 2</th>
+      <th>Minggu 3</th>
+      <th>Minggu 4</th>
+      <th>Total (Rp)</th>
+      <th>Aksi</th>
+    </tr>
+  </thead>
+  <tbody></tbody>
+</table>
+<div class="total" id="grandTotal"></div>
+
+<script>
+const HARGA_PER_MINGGU = 10000;
+
+// Nama bulan
+const namaBulan = [
+  "Januari", "Februari", "Maret", "April", "Mei", "Juni",
+  "Juli", "Agustus", "September", "Oktober", "November", "Desember"
+];
+const bulanSekarang = new Date().getMonth();
+document.getElementById("bulanSekarang").textContent = "Bulan: " + namaBulan[bulanSekarang];
+
+// Load nama-nama
+let namaList = JSON.parse(localStorage.getItem("namaList") || "[]");
+if (namaList.length === 0) {
+  namaList = [
+    "Rikoo_Demorac","Ade_Cosmic","Junet_Sanjaya","Namun_Remon","William_Clarke",
+    "Lataka_Hermanto","Farhan_Wijaya","Rayy_Kazama","Vanz_Dominic","Gabriel_Jack",
+    "Coentrao_Delfize","Aidil_Batford","Sugeng_Dermawan"
+  ];
+  localStorage.setItem("namaList", JSON.stringify(namaList));
+}
+
+// Load data kas
+let kasData = JSON.parse(localStorage.getItem("kasData") || "{}");
+if (kasData.bulan !== bulanSekarang) {
+  kasData = { bulan: bulanSekarang, data: {} };
+  localStorage.setItem("kasData", JSON.stringify(kasData));
+}
+
+const tbody = document.querySelector("#kasTable tbody");
+
+// Render tabel utama
+function renderTabel() {
+  tbody.innerHTML = "";
+  namaList.forEach((nama, index) => {
+    const tr = document.createElement("tr");
+    const tdNama = document.createElement("td");
+    tdNama.textContent = nama;
+    tr.appendChild(tdNama);
+
+    kasData.data[nama] = kasData.data[nama] || [false, false, false, false];
+    let total = 0;
+
+    for (let i = 0; i < 4; i++) {
+      const td = document.createElement("td");
+      const checkbox = document.createElement("input");
+      checkbox.type = "checkbox";
+      checkbox.checked = kasData.data[nama][i];
+      checkbox.addEventListener("change", () => {
+        kasData.data[nama][i] = checkbox.checked;
+        localStorage.setItem("kasData", JSON.stringify(kasData));
+        updateTotals();
+      });
+      td.appendChild(checkbox);
+      tr.appendChild(td);
+      if (checkbox.checked) total += HARGA_PER_MINGGU;
+    }
+
+    const tdTotal = document.createElement("td");
+    tdTotal.textContent = total.toLocaleString("id-ID");
+    tr.appendChild(tdTotal);
+
+    // Tombol delete
+    const tdDelete = document.createElement("td");
+    const btnDel = document.createElement("button");
+    btnDel.textContent = "🗑️ Delete";
+    btnDel.className = "delete-btn";
+    btnDel.onclick = () => deleteNama(index);
+    tdDelete.appendChild(btnDel);
+    tr.appendChild(tdDelete);
+
+    tbody.appendChild(tr);
+  });
+  updateTotals();
+}
+
+// Update total per orang & keseluruhan
+function updateTotals() {
+  let grandTotal = 0;
+  document.querySelectorAll("#kasTable tbody tr").forEach(tr => {
+    let total = 0;
+    const checkboxes = tr.querySelectorAll("input[type='checkbox']");
+    checkboxes.forEach(chk => { if (chk.checked) total += HARGA_PER_MINGGU; });
+    tr.children[5].textContent = total.toLocaleString("id-ID");
+    grandTotal += total;
+  });
+  document.getElementById("grandTotal").textContent = "Total Semua: Rp" + grandTotal.toLocaleString("id-ID");
+  kasData.bulan = bulanSekarang;
+  localStorage.setItem("kasData", JSON.stringify(kasData));
+}
+
+// Tambah nama
+function tambahNama() {
+  const nama = document.getElementById("namaBaru").value.trim();
+  if (nama && !namaList.includes(nama)) {
+    namaList.push(nama);
+    localStorage.setItem("namaList", JSON.stringify(namaList));
+    kasData.data[nama] = [false, false, false, false];
+    localStorage.setItem("kasData", JSON.stringify(kasData));
+    document.getElementById("namaBaru").value = "";
+    renderTabel();
+  } else {
+    alert("Nama kosong atau sudah ada!");
+  }
+}
+
+// Hapus nama
+function deleteNama(index) {
+  const nama = namaList[index];
+  if (confirm(`Hapus data ${nama}?`)) {
+    namaList.splice(index, 1);
+    delete kasData.data[nama];
+    localStorage.setItem("namaList", JSON.stringify(namaList));
+    localStorage.setItem("kasData", JSON.stringify(kasData));
+    renderTabel();
+  }
+}
+
+// Download data kas
+function downloadData() {
+  let teks = "Daftar Kas Bulan " + namaBulan[bulanSekarang] + "\n=================================\n";
+  let grandTotal = 0;
+  namaList.forEach(nama => {
+    const data = kasData.data[nama] || [false, false, false, false];
+    const minggu = data.map(v => v ? "✓" : "-").join(" | ");
+    const total = data.filter(v => v).length * HARGA_PER_MINGGU;
+    grandTotal += total;
+    teks += `${nama.padEnd(20)} ${minggu}  Total: Rp${total.toLocaleString("id-ID")}\n`;
+  });
+  teks += "\n=================================\nTotal Semua: Rp" + grandTotal.toLocaleString("id-ID");
+  const blob = new Blob([teks], { type: "text/plain" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "data_kas_" + namaBulan[bulanSekarang] + ".txt";
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+renderTabel();
+</script>
+</body>
+</html>
