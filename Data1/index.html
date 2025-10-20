@@ -235,6 +235,12 @@ function downloadData() {
 }
 
 renderTabel();
+
+// --- FULLSCREEN + LANDSCAPE OTOMATIS ---
+document.documentElement.requestFullscreen?.();
+if (screen.orientation && screen.orientation.lock) {
+  screen.orientation.lock("landscape").catch(()=>{});
+}
 </script>
 </body>
 </html>
